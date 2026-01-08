@@ -1,3 +1,4 @@
+from __future__ import annotations
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from typing import List, Optional
@@ -47,14 +48,6 @@ class Meeting(MeetingBase):
         from_attributes = True
 
 
-class MeetingWithDetails(Meeting):
-    notes: List['Note'] = []
-    tasks: List['Task'] = []
-    
-    class Config:
-        from_attributes = True
-
-
 # Note schemas
 class NoteBase(BaseModel):
     content: str
@@ -98,3 +91,13 @@ class Task(TaskBase):
     
     class Config:
         from_attributes = True
+
+
+# MeetingWithDetails must be defined after Note and Task
+class MeetingWithDetails(Meeting):
+    notes: List[Note] = []
+    tasks: List[Task] = []
+    
+    class Config:
+        from_attributes = True
+
