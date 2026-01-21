@@ -1,9 +1,9 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserBase(BaseModel):
-    name: str
-    email: EmailStr
+    name: str = Field(..., description="User name.", examples=["Maria Silva"])
+    email: EmailStr = Field(..., description="User email.", examples=["maria@example.com"])
 
 
 class UserCreate(UserBase):
@@ -11,7 +11,7 @@ class UserCreate(UserBase):
 
 
 class User(UserBase):
-    id: int
+    id: int = Field(..., description="User identifier.", examples=[1])
 
     class Config:
         from_attributes = True
