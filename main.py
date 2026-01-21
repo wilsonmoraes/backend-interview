@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from typing import List, Optional
 
 import uvicorn
@@ -17,9 +18,12 @@ app = FastAPI(
 )
 
 
-@app.on_event("startup")
-def on_startup() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup
     create_tables()
+    yield
+    # shutdown
 
 
 def get_service_mesh(

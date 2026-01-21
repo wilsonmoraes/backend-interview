@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table
 from sqlalchemy.orm import declarative_base, relationship
-from datetime import datetime
+from datetime import datetime, timezone
 
 Base = declarative_base()
 
@@ -33,7 +33,7 @@ class Meeting(Base):
     title = Column(String, nullable=False)
     description = Column(Text)
     scheduled_time = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     owner_id = Column(Integer, ForeignKey('users.id'), index=True, nullable=False)
     
     # Relationships
@@ -47,7 +47,7 @@ class Note(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     meeting_id = Column(Integer, ForeignKey('meetings.id'), nullable=False)
     owner_id = Column(Integer, ForeignKey('users.id'), index=True, nullable=False)
     
@@ -62,7 +62,7 @@ class Task(Base):
     title = Column(String, nullable=False)
     description = Column(Text)
     status = Column(String, default='pending')  # pending, completed, cancelled
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     due_meeting_id = Column(Integer, ForeignKey('meetings.id'), nullable=False)
     owner_id = Column(Integer, ForeignKey('users.id'), index=True, nullable=False)
     
