@@ -19,9 +19,11 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False, index=True)
+    owner_id = Column(Integer, ForeignKey('users.id'), index=True, nullable=True)
     
     # Relationships
     meetings = relationship('Meeting', secondary=meeting_users, back_populates='attendees')
+    owned_users = relationship('User', remote_side=[id])
 
 
 class Meeting(Base):
@@ -32,6 +34,7 @@ class Meeting(Base):
     description = Column(Text)
     scheduled_time = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    owner_id = Column(Integer, ForeignKey('users.id'), index=True, nullable=False)
     
     # Relationships
     attendees = relationship('User', secondary=meeting_users, back_populates='meetings')
@@ -46,6 +49,7 @@ class Note(Base):
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     meeting_id = Column(Integer, ForeignKey('meetings.id'), nullable=False)
+    owner_id = Column(Integer, ForeignKey('users.id'), index=True, nullable=False)
     
     # Relationships
     meeting = relationship('Meeting', back_populates='notes')
@@ -60,6 +64,7 @@ class Task(Base):
     status = Column(String, default='pending')  # pending, completed, cancelled
     created_at = Column(DateTime, default=datetime.utcnow)
     due_meeting_id = Column(Integer, ForeignKey('meetings.id'), nullable=False)
+    owner_id = Column(Integer, ForeignKey('users.id'), index=True, nullable=False)
     
     # Relationships
     due_meeting = relationship('Meeting', back_populates='tasks', foreign_keys=[due_meeting_id])

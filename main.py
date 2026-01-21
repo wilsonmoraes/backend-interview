@@ -1,7 +1,14 @@
-from fastapi import FastAPI, HTTPException, Query
 from typing import List, Optional
-from datetime import datetime
+
+import uvicorn
+from fastapi import Depends, FastAPI, Query
+from sqlalchemy.orm import Session
+
 import schemas
+from auth import get_current_user, get_optional_user
+from database import create_tables, get_db
+from service_mesh import ServiceMesh
+from services import MeetingService, NoteService, TaskService, UserService
 
 app = FastAPI(
     title="Meeting Notes API",
@@ -10,205 +17,168 @@ app = FastAPI(
 )
 
 
+@app.on_event("startup")
+def on_startup() -> None:
+    create_tables()
+
+
+def get_service_mesh(
+        current_user=Depends(get_current_user),
+        db: Session = Depends(get_db),
+) -> ServiceMesh:
+    return ServiceMesh(user=current_user, db=db)
+
+
+def get_optional_service_mesh(
+        current_user=Depends(get_optional_user),
+        db: Session = Depends(get_db),
+) -> ServiceMesh:
+    return ServiceMesh(user=current_user, db=db)
+
+
 # User endpoints
 @app.post("/users/", response_model=schemas.User, status_code=201)
-async def create_user(user: schemas.UserCreate):
+async def create_user(user: schemas.UserCreate, mesh: ServiceMesh = Depends(get_optional_service_mesh)):
     """
     Create a new user.
     """
-    # Stub: Return a mock user
-    return schemas.User(id=1, name=user.name, email=user.email)
+    return mesh.get_service(UserService).create_user(user)
 
 
 @app.get("/users/", response_model=List[schemas.User])
-async def list_users():
+async def list_users(mesh: ServiceMesh = Depends(get_service_mesh)):
     """
     List all users.
     """
-    # Stub: Return empty list
-    return []
+    return mesh.get_service(UserService).list_users()
 
 
 @app.get("/users/{user_id}", response_model=schemas.User)
-async def get_user(user_id: int):
+async def get_user(user_id: int, mesh: ServiceMesh = Depends(get_service_mesh)):
     """
     Get a specific user by ID.
     """
-    # Stub: Return a mock user
-    return schemas.User(id=user_id, name="John Doe", email="john@example.com")
+    return mesh.get_service(UserService).get_user(user_id)
 
 
 # Meeting endpoints
 @app.post("/meetings/", response_model=schemas.Meeting, status_code=201)
-async def create_meeting(meeting: schemas.MeetingCreate):
+async def create_meeting(meeting: schemas.MeetingCreate, mesh: ServiceMesh = Depends(get_service_mesh)):
     """
     Create a new meeting with attendees.
     """
-    # Stub: Return a mock meeting
-    return schemas.Meeting(
-        id=1,
-        title=meeting.title,
-        description=meeting.description,
-        scheduled_time=meeting.scheduled_time,
-        created_at=meeting.scheduled_time,
-        attendees=[]
-    )
+    return mesh.get_service(MeetingService).create_meeting(meeting)
 
 
 @app.get("/meetings/", response_model=List[schemas.Meeting])
-async def list_meetings():
+async def list_meetings(mesh: ServiceMesh = Depends(get_service_mesh)):
     """
     List all meetings.
     """
-    # Stub: Return empty list
-    return []
+    return mesh.get_service(MeetingService).list_meetings()
 
 
 @app.get("/meetings/{meeting_id}", response_model=schemas.MeetingWithDetails)
-async def get_meeting(meeting_id: int):
+async def get_meeting(meeting_id: int, mesh: ServiceMesh = Depends(get_service_mesh)):
     """
     Get a specific meeting with all details (attendees, notes, tasks).
     """
-    # Stub: Return a mock meeting with details
-    return schemas.MeetingWithDetails(
-        id=meeting_id,
-        title="Team Standup",
-        description="Daily standup meeting",
-        scheduled_time=datetime.utcnow(),
-        created_at=datetime.utcnow(),
-        attendees=[],
-        notes=[],
-        tasks=[]
-    )
+    return mesh.get_service(MeetingService).get_meeting(meeting_id)
 
 
 @app.put("/meetings/{meeting_id}", response_model=schemas.Meeting)
-async def update_meeting(meeting_id: int, meeting: schemas.MeetingUpdate):
+async def update_meeting(
+        meeting_id: int,
+        meeting: schemas.MeetingUpdate,
+        mesh: ServiceMesh = Depends(get_service_mesh),
+):
     """
     Update a meeting.
     """
-    # Stub: Return a mock updated meeting
-    return schemas.Meeting(
-        id=meeting_id,
-        title=meeting.title or "Updated Meeting",
-        description=meeting.description,
-        scheduled_time=meeting.scheduled_time or datetime.utcnow(),
-        created_at=datetime.utcnow(),
-        attendees=[]
-    )
+    return mesh.get_service(MeetingService).update_meeting(meeting_id, meeting)
 
 
 @app.delete("/meetings/{meeting_id}", status_code=204)
-async def delete_meeting(meeting_id: int):
+async def delete_meeting(meeting_id: int, mesh: ServiceMesh = Depends(get_service_mesh)):
     """
     Delete a meeting.
     """
-    # Stub: Just return success
+    mesh.get_service(MeetingService).delete_meeting(meeting_id)
     return None
 
 
 # Note endpoints
 @app.post("/notes/", response_model=schemas.Note, status_code=201)
-async def create_note(note: schemas.NoteCreate):
+async def create_note(note: schemas.NoteCreate, mesh: ServiceMesh = Depends(get_service_mesh)):
     """
     Create a new note for a meeting.
     """
-    # Stub: Return a mock note
-    return schemas.Note(
-        id=1,
-        content=note.content,
-        meeting_id=note.meeting_id,
-        created_at=datetime.utcnow()
-    )
+    return mesh.get_service(NoteService).create_note(note)
 
 
 @app.get("/notes/", response_model=List[schemas.Note])
-async def list_notes(meeting_id: Optional[int] = Query(None)):
+async def list_notes(meeting_id: Optional[int] = Query(None), mesh: ServiceMesh = Depends(get_service_mesh)):
     """
     List all notes, optionally filtered by meeting_id.
     """
-    # Stub: Return empty list
-    return []
+    return mesh.get_service(NoteService).list_notes(meeting_id=meeting_id)
 
 
 @app.get("/notes/{note_id}", response_model=schemas.Note)
-async def get_note(note_id: int):
+async def get_note(note_id: int, mesh: ServiceMesh = Depends(get_service_mesh)):
     """
     Get a specific note by ID.
     """
-    # Stub: Return a mock note
-    return schemas.Note(
-        id=note_id,
-        content="Sample note content",
-        meeting_id=1,
-        created_at=datetime.utcnow()
-    )
+    return mesh.get_service(NoteService).get_note(note_id)
 
 
 # Task endpoints
 @app.post("/tasks/", response_model=schemas.Task, status_code=201)
-async def create_task(task: schemas.TaskCreate):
+async def create_task(task: schemas.TaskCreate, mesh: ServiceMesh = Depends(get_service_mesh)):
     """
     Create a new task that is due at a specific meeting.
     """
-    # Stub: Return a mock task
-    return schemas.Task(
-        id=1,
-        title=task.title,
-        description=task.description,
-        status=task.status,
-        due_meeting_id=task.due_meeting_id,
-        created_at=datetime.utcnow()
-    )
+    return mesh.get_service(TaskService).create_task(task)
 
 
 @app.get("/tasks/", response_model=List[schemas.Task])
-async def list_tasks(meeting_id: Optional[int] = Query(None), status: Optional[str] = Query(None)):
+async def list_tasks(
+        meeting_id: Optional[int] = Query(None),
+        status: Optional[str] = Query(None),
+        mesh: ServiceMesh = Depends(get_service_mesh),
+):
     """
     List all tasks, optionally filtered by meeting_id or status.
     """
-    # Stub: Return empty list
-    return []
+    return mesh.get_service(TaskService).list_tasks(meeting_id=meeting_id, status_filter=status)
 
 
 @app.get("/tasks/{task_id}", response_model=schemas.Task)
-async def get_task(task_id: int):
+async def get_task(task_id: int, mesh: ServiceMesh = Depends(get_service_mesh)):
     """
     Get a specific task by ID.
     """
-    # Stub: Return a mock task
-    return schemas.Task(
-        id=task_id,
-        title="Sample task",
-        description="Sample task description",
-        status="pending",
-        due_meeting_id=1,
-        created_at=datetime.utcnow()
-    )
+    return mesh.get_service(TaskService).get_task(task_id)
 
 
 @app.put("/tasks/{task_id}", response_model=schemas.Task)
-async def update_task(task_id: int, task: schemas.TaskUpdate):
+async def update_task(
+        task_id: int,
+        task: schemas.TaskUpdate,
+        mesh: ServiceMesh = Depends(get_service_mesh),
+):
     """
     Update a task (e.g., change status, reassign to different meeting).
     """
-    # Stub: Return a mock updated task
-    return schemas.Task(
-        id=task_id,
-        title=task.title or "Updated task",
-        description=task.description,
-        status=task.status or "pending",
-        due_meeting_id=task.due_meeting_id or 1,
-        created_at=datetime.utcnow()
-    )
+    return mesh.get_service(TaskService).update_task(task_id, task)
 
 
 @app.delete("/tasks/{task_id}", status_code=204)
-async def delete_task(task_id: int):
+async def delete_task(task_id: int, mesh: ServiceMesh = Depends(get_service_mesh)):
     """
     Delete a task.
     """
-    # Stub: Just return success
+    mesh.get_service(TaskService).delete_task(task_id)
     return None
 
 
@@ -227,3 +197,7 @@ async def root():
             "tasks": "/tasks/"
         }
     }
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
